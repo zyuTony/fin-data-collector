@@ -1,0 +1,10 @@
+beautifulsoup4==4.12.3
+python-binance==0.3
+numpy==2.1.2
+pandas==2.2.3
+psycopg2==2.9.10
+python-dotenv==1.0.1
+Requests==2.32.3
+statsmodels==0.14.4
+tqdm==4.66.5
+twilio==9.3.6
