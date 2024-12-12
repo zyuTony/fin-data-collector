@@ -3,7 +3,7 @@ from twilio.rest import Client
 
 # DATA_FOLDER = '/home/ec2-user/financial_database/backend/data'
 # DATA_FOLDER = 'C:/Users/zongy/Desktop/repo/financial_database/backend/data'
-DATA_FOLDER = '/Users/zyu/Desktop/repo/financial-master-database/backend/data'
+DATA_FOLDER = '/Users/zyu/Desktop/repo/fin-data-collector/src/data'
 # FOLDERS
 RAW_CSV_PATH = DATA_FOLDER + '/raw_csv'
 CHECKPOINT_JSON_PATH = DATA_FOLDER + '/checkpoints'
