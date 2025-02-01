@@ -10,7 +10,7 @@ import logging
 from datetime import datetime
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format='%(asctime)s | %(levelname)8s | %(message)s',
     datefmt='%Y-%m-%d %H:%M' #datefmt='%Y-%m-%d %H:%M:%S'
 )
@@ -129,6 +129,93 @@ class db_refresher(ABC):
             self.conn.rollback()
         finally:
             cursor.close()
+
+class binance_OHLC_db_refresher(db_refresher):
+    '''handle all data insertion from OHLC data via binance api'''
+    def __init__(self, *args):
+        super().__init__(*args)
+        
+        self.table_creation_script = f"""
+        CREATE TABLE IF NOT EXISTS {self.table_name} (
+            symbol VARCHAR(20) NOT NULL,
+            date DATE NOT NULL,
+            open DOUBLE PRECISION NOT NULL,
+            high DOUBLE PRECISION NOT NULL,
+            low DOUBLE PRECISION NOT NULL,
+            close DOUBLE PRECISION NOT NULL,
+            volume DOUBLE PRECISION NOT NULL,
+            close_time DATE NOT NULL,
+            quote_volume DOUBLE PRECISION NOT NULL,
+            trades INTEGER NOT NULL,
+            taker_base_volume DOUBLE PRECISION NOT NULL,
+            taker_quote_volume DOUBLE PRECISION NOT NULL,
+            PRIMARY KEY (symbol, date)
+        );
+        """
+        
+        self.data_insertion_script = f"""
+        INSERT INTO {self.table_name} (
+            symbol, date, open, high, low, close, volume,
+            close_time, quote_volume, trades, taker_base_volume, taker_quote_volume
+        )
+        VALUES %s
+        ON CONFLICT (symbol, date)
+        DO UPDATE SET
+            open = EXCLUDED.open,
+            high = EXCLUDED.high,
+            low = EXCLUDED.low,
+            close = EXCLUDED.close,
+            volume = EXCLUDED.volume,
+            close_time = EXCLUDED.close_time,
+            quote_volume = EXCLUDED.quote_volume,
+            trades = EXCLUDED.trades,
+            taker_base_volume = EXCLUDED.taker_base_volume,
+            taker_quote_volume = EXCLUDED.taker_quote_volume
+        WHERE {self.table_name}.open <> EXCLUDED.open
+            OR {self.table_name}.high <> EXCLUDED.high
+            OR {self.table_name}.low <> EXCLUDED.low
+            OR {self.table_name}.close <> EXCLUDED.close
+            OR {self.table_name}.volume <> EXCLUDED.volume
+            OR {self.table_name}.close_time <> EXCLUDED.close_time
+            OR {self.table_name}.quote_volume <> EXCLUDED.quote_volume
+            OR {self.table_name}.trades <> EXCLUDED.trades
+            OR {self.table_name}.taker_base_volume <> EXCLUDED.taker_base_volume
+            OR {self.table_name}.taker_quote_volume <> EXCLUDED.taker_quote_volume;
+        """
+        
+    def _data_transformation(self, file_path):
+        try:
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+            symbol = os.path.splitext(os.path.basename(file_path))[0]
+            outputs = []
+            seen_dates = set()
+            
+            for entry in data:
+                timestamp_ms = entry[0]
+                date = datetime.fromtimestamp(timestamp_ms/1000).strftime('%Y-%m-%d')
+                open_price = float(entry[1])
+                high = float(entry[2]) 
+                low = float(entry[3])
+                close = float(entry[4])
+                volume = float(entry[5])
+                close_time = datetime.fromtimestamp(entry[6]/1000).strftime('%Y-%m-%d')
+                quote_volume = float(entry[7])
+                trades = int(entry[8])
+                taker_base_volume = float(entry[9])
+                taker_quote_volume = float(entry[10])
+                               
+                if date not in seen_dates:
+                    outputs.append([
+                        symbol, date, open_price, high, low, close, volume,
+                        close_time, quote_volume, trades, taker_base_volume,
+                        taker_quote_volume
+                    ])
+                    seen_dates.add(date)  
+            return outputs     
+        except Exception as e:
+            logging.debug(f"Data transformation failed for {symbol}: {e}")
+            return None
 
 class coin_gecko_OHLC_db_refresher(db_refresher):
     '''handle all data insertion from OHLC data via coin gecko api'''
