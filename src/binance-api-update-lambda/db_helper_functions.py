@@ -161,7 +161,35 @@ class db_refresher(ABC):
             return None
         finally:
             cursor.close()
- 
+            
+    def _get_max_date_for_coint_pair(self):
+        """
+        hacky way to get the last updated date for coint pairs
+        """
+        cursor = self.conn.cursor()
+        try:
+            query = f'''
+            SELECT symbol_one, symbol_two, MAX(date) as max_date, window_size
+            FROM {self.table_name}
+            GROUP BY symbol_one, symbol_two, window_size
+            '''
+                
+            cursor.execute(query)
+            data = cursor.fetchall()
+            
+            # Get column names from cursor description
+            column_names = [desc[0] for desc in cursor.description]
+            
+            # Convert to pandas DataFrame
+            df = pd.DataFrame(data, columns=column_names)
+            return df
+            
+        except Exception as e:
+            logging.error(f"Failed to retrieve data: {str(e)}")
+            return None
+        finally:
+            cursor.close()
+    
 class binance_OHLC_db_refresher(db_refresher):
     '''handle all data insertion from OHLC data via binance api'''
     def __init__(self, *args):
