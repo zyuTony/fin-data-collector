@@ -5,7 +5,6 @@ from db_helper_functions import *
 from db_helper_functions import db_refresher, binance_cointegration_db_refresher
 import pandas as pd
 from statsmodels.tsa.stattools import coint
-import logging
 
 def lambda_handler(event, context):
     # environment variables and initialize clients
@@ -15,23 +14,11 @@ def lambda_handler(event, context):
     DB_USERNAME = os.getenv('DB_USERNAME')
     DB_PASSWORD = os.getenv('DB_PASSWORD')    
 
-    # group1_symbols = event.get('group1_symbols', ["BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB", "AVAX", "SUI", "ADA", "NEAR", "FLOKI", "LINK", "FET",
-    # "SEI", "OP", "FIL", "FTM", "LTC", "PEOPLE", "INJ", "DOT", "TRX", "APT"]) 
-    
-    # group2_symbols = event.get('group2_symbols', [
-    # "BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB",
-    # "AVAX", "SUI", "ARB", "ADA", "WLD", "NEAR", "FLOKI", "RUNE", "LINK", "FET",
-    # "SEI", "OP", "FIL", "FTM", "LTC", "PEOPLE", "INJ", "DOT", "TRX", "APT",
-    # "BCH", "GALA", "ICP", "UNI", "TRB", "ETC", "STX", "LUNC",
-    # "ENS", "XLM", "ARKM", "HBAR", "ATOM", "PENDLE", "DYDX", "AAVE", "JASMY", "LDO",
-    # "FTT", "AR", "CRV", "CKB", "LUNA", "OM"
-    # ]) 
-    
     group1_symbols = event.get('group1_symbols')
-    logging.info(f"group1_symbols: {group1_symbols}")
+    print(f"group1_symbols: {group1_symbols}")
     
     group2_symbols = event.get('group2_symbols')
-    logging.info(f"group2_symbols: {group2_symbols}")
+    print(f"group2_symbols: {group2_symbols}")
     window_size = event.get('window_size', 60)
     
     # get market data from db
@@ -95,21 +82,21 @@ def lambda_handler(event, context):
         results = []
         processed_pairs = set()
         for sym1 in group1_symbols:
-            logging.debug(f"Processing group1 symbol: {sym1}")
+            print(f"Processing group1 symbol: {sym1}")
             for sym2 in group2_symbols:
-                logging.debug(f"Processing group2 symbol: {sym2}")
+                print(f"Processing group2 symbol: {sym2}")
                 # Skip if same symbol or if pair already processed
                 if sym1 == sym2:
-                    logging.debug(f"Skipping pair {sym1}-{sym2} as they are the same symbol.")
+                    print(f"Skipping pair {sym1}-{sym2} as they are the same symbol.")
                     continue
                     
                 pair = tuple(sorted([sym1, sym2]))
                 if pair in processed_pairs:
-                    logging.debug(f"Skipping pair {pair} as it has already been processed.")
+                    print(f"Skipping pair {pair} as it has already been processed.")
                     continue
                 processed_pairs.add(pair)
                 
-                logging.info(f"Processing cointegration for pair: {sym1}-{sym2}")
+                print(f"Processing cointegration for pair: {sym1}-{sym2}")
                 
                 # Get latest date for this symbol pair
                 pair_data = curr_coint_data_max_dates[
@@ -124,21 +111,21 @@ def lambda_handler(event, context):
                     start_date = latest_date - pd.Timedelta(days=window_size) 
                     data1 = market_data_pivot[sym1][market_data_pivot.index >= start_date.date()]
                     data2 = market_data_pivot[sym2][market_data_pivot.index >= start_date.date()]
-                    logging.info(f"Updating existing pair {sym1}-{sym2} from {latest_date}")
-                    logging.debug(f"Data1 length: {len(data1)}, Data2 length: {len(data2)}")
+                    print(f"Updating existing pair {sym1}-{sym2} from {latest_date}")
+                    print(f"Data1 length: {len(data1)}, Data2 length: {len(data2)}")
                 else:
                     # For new pairs, use all available data
                     data1 = market_data_pivot[sym1]
                     data2 = market_data_pivot[sym2]
-                    logging.info(f"Processing new pair {sym1}-{sym2} for all available dates")
-                    logging.debug(f"Data1 length: {len(data1)}, Data2 length: {len(data2)}")
+                    print(f"Processing new pair {sym1}-{sym2} for all available dates")
+                    print(f"Data1 length: {len(data1)}, Data2 length: {len(data2)}")
                 
                 p_values = _single_pair_rolling_coint(
                     data1,
                     data2,
                     window_size
                 )
-                logging.debug(f"Calculated p-values for pair {sym1}-{sym2}: {p_values}")
+                print(f"Calculated p-values for pair {sym1}-{sym2}: {p_values}")
                 
                 dates = data1.index[window_size:]
                 for date, p_value in zip(dates, p_values):
@@ -153,7 +140,7 @@ def lambda_handler(event, context):
                             'p_value': p_value
                         })
                 
-                logging.info(f"Completed processing pair {sym1}-{sym2}")
+                print(f"Completed processing pair {sym1}-{sym2}")
         
         if not results:
             return pd.DataFrame()
@@ -162,29 +149,38 @@ def lambda_handler(event, context):
         results_df['date'] = pd.to_datetime(results_df['date'])
         return results_df
     
-    logging.info("Starting market data transformation")
+    print("Starting market data transformation")
     
     # Prepare market data transformation
     market_data_pivot = market_data.pivot(index='date', columns='symbol', values='close')
     market_data_pivot = market_data_pivot.sort_index()
-    logging.info("Market data transformation completed")
+    print("Market data transformation completed")
     
     # run
-    logging.info("Starting cointegration calculation")
+    print("Starting cointegration calculation")
     results_df = calculate_group_cointegration(market_data_pivot, group1_symbols=group1_symbols, group2_symbols=group2_symbols, window_size=window_size)
-    logging.info("Cointegration calculation completed")
+    print("Cointegration calculation completed")
     
     # update
-    logging.info("Starting database update")
+    print("Starting database update")
     db = binance_cointegration_db_refresher(DB_NAME, DB_HOST, DB_USERNAME, DB_PASSWORD, "binance_analyzer_cointegration")
     db.connect()
     db.create_table()
     db.insert_data(results_df)
-    logging.info("Database update completed")
+    print("Database update completed")
     
 if __name__ == "__main__":
-#     lambda_handler({
-#   "group1_symbols": ["BTC", "ETH"],
-#   "group2_symbols": ["LTC", "BNB"]
-# }, {})
-    lambda_handler({}, {})
+    lambda_handler({
+    "group1_symbols": ["BTC", "ETH"],
+    "group2_symbols": ["LTC", "BNB"]}, {})
+    # group1_symbols = event.get('group1_symbols', ["BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB", "AVAX", "SUI", "ADA", "NEAR", "FLOKI", "LINK", "FET",
+    # "SEI", "OP", "FIL", "FTM", "LTC", "PEOPLE", "INJ", "DOT", "TRX", "APT"]) 
+
+    # group2_symbols = event.get('group2_symbols', [
+    # "BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB",
+    # "AVAX", "SUI", "ARB", "ADA", "WLD", "NEAR", "FLOKI", "RUNE", "LINK", "FET",
+    # "SEI", "OP", "FIL", "FTM", "LTC", "PEOPLE", "INJ", "DOT", "TRX", "APT",
+    # "BCH", "GALA", "ICP", "UNI", "TRB", "ETC", "STX", "LUNC",
+    # "ENS", "XLM", "ARKM", "HBAR", "ATOM", "PENDLE", "DYDX", "AAVE", "JASMY", "LDO",
+    # "FTT", "AR", "CRV", "CKB", "LUNA", "OM"
+    # ]) 
