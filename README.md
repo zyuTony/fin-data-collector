@@ -1,5 +1,4 @@
 # Financial Data Pipeline Scripts
-
 A collection of scripts for maintaining and updating financial market data in a PostgreSQL database.
 
 ## Core Pipeline Scripts

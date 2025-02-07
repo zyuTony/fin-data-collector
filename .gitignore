@@ -28,3 +28,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+.DS_Store
+**/.DS_Store
+._.DS_Store
+**/._.DS_Store
+
+package/
+**/package/
+**/.package

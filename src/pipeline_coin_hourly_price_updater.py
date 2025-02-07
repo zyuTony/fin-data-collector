@@ -27,14 +27,3 @@ api_getter = coin_gecko_hourly_ohlc_api_getter(api_key=gc_api_key,
                                    start_date=start_date,
                                    end_date=end_date)
 api_getter.download_data()
-
-# insert to DB
-# OHLC
-db = coin_gecko_OHLC_hourly_db_refresher(DB_NAME, DB_HOST, DB_USERNAME, DB_PASSWORD, "coin_historical_price")
-db.connect()
-db.create_table()
-for filename in os.listdir(GECKO_DAILY_JSON_PATH):
-    if filename.endswith('.json'):
-        file_path = os.path.join(GECKO_DAILY_JSON_PATH, filename)
-        db.insert_data(file_path)
-db.close()

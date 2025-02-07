@@ -1,8 +1,3 @@
-from datetime import datetime
-from twilio.rest import Client
-
-# DATA_FOLDER = '/home/ec2-user/financial_database/backend/data'
-# DATA_FOLDER = 'C:/Users/zongy/Desktop/repo/financial_database/backend/data'
 DATA_FOLDER = '/Users/zyu/Desktop/repo/fin-data-collector/src/data'
 # FOLDERS
 RAW_CSV_PATH = DATA_FOLDER + '/raw_csv'
@@ -15,8 +10,8 @@ TOP_N_COINS_DOWNLOADED_FROM_BINANCE = 200
 BN_MAX_RETRIES = 3
 BN_CHECKPOINT_FILE = CHECKPOINT_JSON_PATH + '/binance_checkpoint.json'
 BN_JSON_PATH = DATA_FOLDER + '/binance_raw_json'
-BN_DAILY_JSON_PATH = BN_JSON_PATH + '/1DAY'
-BN_HOURLY_JSON_PATH = BN_JSON_PATH + '/1HOUR'
+BN_DAILY_JSON_PATH = BN_JSON_PATH + '/1d'
+BN_HOURLY_JSON_PATH = BN_JSON_PATH + '/1h'
 
 # COIN GECKO JSON
 DAYS_PER_API_LIMIT = 180
@@ -69,22 +64,3 @@ ROLLING_COINT_WINDOW = 60
 HIST_WINDOW_SIG_EVAL = 240
 RECENT_WINDOW_SIG_EVAL = 60 
 OLS_WINDOW = 60
-
-
-# send text notification
-def outgoing_call(account_sid, auth_token, to_number):
-    client = Client(account_sid, auth_token)
-    call = client.calls.create(
-        url="http://demo.twilio.com/docs/voice.xml",
-        to=to_number,
-        from_='+18449903647')
-    print(call.sid)
-        
-def send_sms_message(account_sid, auth_token, to_number, message):
-    client = Client(account_sid, auth_token)
-    message = client.messages.create(
-            body=message,
-            from_='+18449903647',
-            to=to_number)
-    print(message.sid)
-        
