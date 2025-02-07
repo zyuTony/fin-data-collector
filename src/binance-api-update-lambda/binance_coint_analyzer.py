@@ -171,8 +171,60 @@ def lambda_handler(event, context):
     
 if __name__ == "__main__":
     lambda_handler({
-    "group1_symbols": ["BTC", "ETH"],
-    "group2_symbols": ["LTC", "BNB"]}, {})
+    "group1_symbols": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
+    "DOGE",
+    "PEPE",
+    "BNB",
+    "SHIB",
+    "SUI",
+    "ADA",
+    "WIF",
+    "ARB",
+    "AVAX",
+    "LINK",
+    "LTC",
+    "WLD",
+    "TRX",
+    "NEAR",
+    "MATIC",
+    "ORDI",
+    "RUNE",
+    "OP",
+    "APT",
+    "FET",
+    "FTM"
+  ],
+    "group2_symbols": [
+    "BTC",
+    "ETH",
+    "SOL",
+    "XRP",
+    "DOGE",
+    "PEPE",
+    "BNB",
+    "SHIB",
+    "SUI",
+    "ADA",
+    "WIF",
+    "ARB",
+    "AVAX",
+    "LINK",
+    "LTC",
+    "WLD",
+    "TRX",
+    "NEAR",
+    "MATIC",
+    "ORDI",
+    "RUNE",
+    "OP",
+    "APT",
+    "FET",
+    "FTM"
+  ],}, {})
     # group1_symbols = event.get('group1_symbols', ["BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB", "AVAX", "SUI", "ADA", "NEAR", "FLOKI", "LINK", "FET",
     # "SEI", "OP", "FIL", "FTM", "LTC", "PEOPLE", "INJ", "DOT", "TRX", "APT"]) 
 
