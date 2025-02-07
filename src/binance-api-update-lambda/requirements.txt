@@ -5,3 +5,4 @@ boto3
 pandas
 logging
 psycopg2-binary
+statsmodels

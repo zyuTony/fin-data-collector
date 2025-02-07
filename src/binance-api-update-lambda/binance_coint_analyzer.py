@@ -5,6 +5,7 @@ from db_helper_functions import db_refresher, binance_cointegration_db_refresher
 import pandas as pd
 from statsmodels.tsa.stattools import coint
 import logging
+
 def lambda_handler(event, context):
     # environment variables and initialize clients
     load_dotenv(override=True)  
@@ -14,8 +15,7 @@ def lambda_handler(event, context):
     DB_PASSWORD = os.getenv('DB_PASSWORD')
     
 
-    group1_symbols = event.get('group1_symbols', ["BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB",
-    "AVAX", "SUI", "ADA", "NEAR", "FLOKI", "LINK", "FET",
+    group1_symbols = event.get('group1_symbols', ["BTC", "ETH", "SOL", "DOGE", "PEPE", "XRP", "BNB", "SHIB", "AVAX", "SUI", "ADA", "NEAR", "FLOKI", "LINK", "FET",
     "SEI", "OP", "FIL", "FTM", "LTC", "PEOPLE", "INJ", "DOT", "TRX", "APT"]) 
     
     group2_symbols = event.get('group2_symbols', [
@@ -25,7 +25,7 @@ def lambda_handler(event, context):
     "BCH", "GALA", "ICP", "UNI", "TRB", "ETC", "STX", "LUNC",
     "ENS", "XLM", "ARKM", "HBAR", "ATOM", "PENDLE", "DYDX", "AAVE", "JASMY", "LDO",
     "FTT", "AR", "CRV", "CKB", "LUNA", "OM"
-]) 
+    ]) 
     
     # group1_symbols = event.get('group1_symbols', ["BTC", "ETH", "SOL"]) 
     
@@ -149,6 +149,7 @@ def lambda_handler(event, context):
         results_df = pd.DataFrame(results)
         results_df['date'] = pd.to_datetime(results_df['date'])
         return results_df
+    
     # Prepare market data transformation
     market_data_pivot = market_data.pivot(index='date', columns='symbol', values='close')
     market_data_pivot = market_data_pivot.sort_index()

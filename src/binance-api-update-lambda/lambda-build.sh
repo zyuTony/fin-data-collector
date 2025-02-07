@@ -24,7 +24,7 @@ build_and_push() {
 }
 
 # Create repositories if they don't exist
-for repo in lambda-binance-api-getter lambda-binance-ticker-generator lambda-binance-db-updater; do
+for repo in lambda-binance-api-getter lambda-binance-ticker-generator lambda-binance-db-updater lambda-binance-coint-analyzer; do
     aws ecr describe-repositories --repository-names ${repo} 2>/dev/null || \
     aws ecr create-repository --repository-name ${repo} --region ${AWS_REGION}
 done
@@ -32,6 +32,6 @@ done
 # Build and push images
 # build_and_push Dockerfile.binance_api_getter lambda-binance-api-getter
 # build_and_push Dockerfile.binance_ticker_generator lambda-binance-ticker-generator
-build_and_push Dockerfile.binance_db_updater lambda-binance-db-updater
-
+# build_and_push Dockerfile.binance_db_updater lambda-binance-db-updater
+build_and_push Dockerfile.binance_coint_analyzer lambda-binance-coint-analyzer
 echo "Done!"
