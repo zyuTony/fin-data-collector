@@ -5,7 +5,6 @@ import pandas as pd
 import psycopg2
 from psycopg2 import OperationalError
 from psycopg2.extras import execute_values
-from config import *
 import logging
 from datetime import datetime
 
@@ -317,3 +316,134 @@ class binance_cointegration_db_refresher(db_refresher):
         except Exception as e:
             logging.debug(f"Data transformation failed: {e}")
             return None
+        
+class binance_performance_db_refresher(db_refresher):
+    '''handle all data insertion for performance metrics'''
+    def __init__(self, *args):
+        super().__init__(*args)
+        
+        self.table_creation_script = f""" 
+        CREATE TABLE IF NOT EXISTS {self.table_name} (
+            symbol VARCHAR(20) NOT NULL,
+            latest_date DATE NOT NULL,
+            latest_close DOUBLE PRECISION NOT NULL,
+            close_7d_ago DOUBLE PRECISION,
+            close_30d_ago DOUBLE PRECISION,
+            close_60d_ago DOUBLE PRECISION,
+            close_90d_ago DOUBLE PRECISION,
+            close_180d_ago DOUBLE PRECISION,
+            avg_volume_14d DOUBLE PRECISION,
+            pct_change_7d DOUBLE PRECISION,
+            pct_change_30d DOUBLE PRECISION,
+            pct_change_60d DOUBLE PRECISION,
+            pct_change_90d DOUBLE PRECISION,
+            pct_change_180d DOUBLE PRECISION,
+            pct_change_365d DOUBLE PRECISION,
+            pct_change_altseason_1 DOUBLE PRECISION,
+            pct_change_altseason_2 DOUBLE PRECISION,
+            pct_change_altseason_3 DOUBLE PRECISION,
+            PRIMARY KEY (symbol)
+        );
+        """
+        
+        self.data_insertion_script = f"""
+        INSERT INTO {self.table_name} (
+            symbol, latest_date, latest_close, close_7d_ago, close_30d_ago, close_60d_ago, close_90d_ago, close_180d_ago, avg_volume_14d, pct_change_7d, pct_change_30d, pct_change_60d, pct_change_90d, pct_change_180d, pct_change_365d, pct_change_altseason_1, pct_change_altseason_2, pct_change_altseason_3
+        )
+        WITH t1 AS (
+                SELECT symbol, MAX(date) AS latest_date
+                FROM binance_market_data  
+                GROUP BY symbol
+            ),
+            latest_date AS (
+                SELECT MAX(latest_date) as max_date
+                FROM t1
+            ),
+            t2 AS (
+                SELECT symbol, date, close, quote_volume,
+                    LAG(close, 7) OVER (PARTITION BY symbol ORDER BY date) AS close_7d_ago,
+                    LAG(close, 30) OVER (PARTITION BY symbol ORDER BY date) AS close_30d_ago,
+                    LAG(close, 60) OVER (PARTITION BY symbol ORDER BY date) AS close_60d_ago,
+                    LAG(close, 90) OVER (PARTITION BY symbol ORDER BY date) AS close_90d_ago,
+                    LAG(close, 180) OVER (PARTITION BY symbol ORDER BY date) AS close_180d_ago,
+                    LAG(close, 365) OVER (PARTITION BY symbol ORDER BY date) AS close_365d_ago,
+                    AVG(quote_volume) OVER (PARTITION BY symbol ORDER BY date
+                                            ROWS BETWEEN 13 PRECEDING AND CURRENT ROW) AS avg_volume_14d
+                FROM binance_market_data
+            ),
+            custom_altseason_1 AS (
+                SELECT DISTINCT symbol, close AS altseason_1_start_close
+                FROM binance_market_data
+                WHERE date = '2019-12-23'
+            ),
+            custom_altseason_1_end AS (
+                SELECT DISTINCT symbol, close AS altseason_1_end_close
+                FROM binance_market_data
+                WHERE date = '2020-08-17'
+            ),
+            custom_altseason_2 AS (
+                SELECT DISTINCT symbol, close AS altseason_2_start_close
+                FROM binance_market_data
+                WHERE date = '2021-01-04'
+            ),
+            custom_altseason_2_end AS (
+                SELECT DISTINCT symbol, close AS altseason_2_end_close
+                FROM binance_market_data
+                WHERE date = '2022-01-10'
+            ),
+            custom_altseason_3 AS (
+                SELECT DISTINCT symbol, close AS altseason_3_start_close
+                FROM binance_market_data
+                WHERE date = '2023-10-30'
+            ),
+            custom_altseason_3_end AS (
+                SELECT DISTINCT symbol, close AS altseason_3_end_close
+                FROM binance_market_data
+                WHERE date = '2024-03-25'
+            )
+            SELECT 
+                t2.symbol, 
+                t2.date AS latest_date, 
+                t2.close AS latest_close, 
+                t2.close_7d_ago, 
+                t2.close_30d_ago, 
+                t2.close_60d_ago, 
+                t2.close_90d_ago, 
+                t2.close_180d_ago,
+                t2.avg_volume_14d,
+                (t2.close - t2.close_7d_ago) / t2.close_7d_ago AS pct_change_7d,
+                (t2.close - t2.close_30d_ago) / t2.close_30d_ago AS pct_change_30d,
+                (t2.close - t2.close_60d_ago) / t2.close_60d_ago AS pct_change_60d,
+                (t2.close - t2.close_90d_ago) / t2.close_90d_ago AS pct_change_90d,
+                (t2.close - t2.close_180d_ago) / t2.close_180d_ago AS pct_change_180d,
+                (t2.close - t2.close_365d_ago) / t2.close_365d_ago AS pct_change_365d,
+                (custom_altseason_1_end.altseason_1_end_close - custom_altseason_1.altseason_1_start_close)
+                / custom_altseason_1.altseason_1_start_close AS pct_change_altseason_1,
+                (custom_altseason_2_end.altseason_2_end_close - custom_altseason_2.altseason_2_start_close)
+                / custom_altseason_2.altseason_2_start_close AS pct_change_altseason_2,
+                (custom_altseason_3_end.altseason_3_end_close - custom_altseason_3.altseason_3_start_close)
+                / custom_altseason_3.altseason_3_start_close AS pct_change_altseason_3
+            FROM t2
+            JOIN t1 ON t2.symbol = t1.symbol AND t2.date = t1.latest_date
+            JOIN latest_date ON t1.latest_date = latest_date.max_date
+            LEFT JOIN custom_altseason_1 ON t2.symbol = custom_altseason_1.symbol
+            LEFT JOIN custom_altseason_1_end ON t2.symbol = custom_altseason_1_end.symbol
+            LEFT JOIN custom_altseason_2 ON t2.symbol = custom_altseason_2.symbol
+            LEFT JOIN custom_altseason_2_end ON t2.symbol = custom_altseason_2_end.symbol
+            LEFT JOIN custom_altseason_3 ON t2.symbol = custom_altseason_3.symbol
+            LEFT JOIN custom_altseason_3_end ON t2.symbol = custom_altseason_3_end.symbol
+        ON CONFLICT (symbol)
+        DO NOTHING
+        """
+        
+    def insert_data(self):
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(self.data_insertion_script)
+            self.conn.commit()
+            logging.info(f"Successfully executed query on {self.table_name}")
+        except Exception as e:
+            logging.error(f"Failed to execute query: {e}")
+            self.conn.rollback()
+        finally:
+            cursor.close()
